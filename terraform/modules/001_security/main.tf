@@ -100,7 +100,7 @@ resource "azurerm_key_vault" "nvs-kv" {
     object_id = data.azurerm_client_config.kv_current.object_id
 
     key_permissions = [
-      "Get","List",
+      "Get","List"
     ]
 
     secret_permissions = [
@@ -108,7 +108,7 @@ resource "azurerm_key_vault" "nvs-kv" {
     ]
 
     storage_permissions = [
-      "Get",
+      "Get","List"
     ] 
   }
 
@@ -120,12 +120,47 @@ resource "azurerm_key_vault" "nvs-kv" {
 
 }
 
+
+# create access policy for the service principal
+
+data "azurerm_client_config" "sp_plc_current" {}
+
+resource "azurerm_key_vault_access_policy" "sp_access_policy" {
+  key_vault_id = azurerm_key_vault.nvs-kv.id
+
+  tenant_id = data.azurerm_client_config.sp_plc_current.tenant_id
+  object_id = azuread_service_principal.service_princ.object_id
+
+  key_permissions = [
+      "Get","List"
+    ]
+
+    secret_permissions = [
+      "Set","Get","List","Delete","Recover","Backup","Restore","Purge"
+    ]
+
+    storage_permissions = [
+      "Get","List"
+    ] 
+
+  depends_on = [
+    azuread_service_principal.service_princ,
+    azurerm_key_vault.nvs-kv
+  ]
+}
+
+
 # Add secrets to keyvault
+ 
 
 resource "azurerm_key_vault_secret" "application_id" {
   name         = var.serviceprincid
   value        = azuread_application_registration.entra_app.client_id
   key_vault_id = azurerm_key_vault.nvs-kv.id
+
+  depends_on = [
+    azurerm_key_vault.nvs-kv
+  ]
 }
 
 data "azuread_client_config" "tennant_current" {}
@@ -135,10 +170,19 @@ resource "azurerm_key_vault_secret" "tenant_id" {
   name         = var.tenant_name
   value        = data.azuread_client_config.tennant_current.tenant_id
   key_vault_id = azurerm_key_vault.nvs-kv.id
+
+  depends_on = [
+    azurerm_key_vault.nvs-kv
+  ]
 }
 
 resource "azurerm_key_vault_secret" "secret" {
   name         = var.sevc_prc_secrt
   value        = azuread_service_principal_password.srvc_pass.value
   key_vault_id = azurerm_key_vault.nvs-kv.id
+
+  depends_on = [
+    azurerm_key_vault.nvs-kv
+  ]
 }
+ 

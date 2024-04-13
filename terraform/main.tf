@@ -15,6 +15,7 @@ provider "azurerm" {
 
 module "security" {
   source = "./modules/001_security"
+  count  = var.exclude_security_module ? 1 : 0
 }
 
 module "compute" {
