@@ -16,4 +16,8 @@ variable "stock_event_hub"{
     default = "stock-hub"
 }
  
- 
+
+variable "exclude_databricks_trial" {
+  description = "to exclude databricks trial"
+  default     = true 
+}

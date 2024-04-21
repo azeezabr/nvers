@@ -32,6 +32,8 @@ resource "azurerm_eventhub_namespace" "nvs-event-hub-nm-space" {
 
   capacity            = 1           # Number of throughput units
 
+  
+
   tags = {
     environment = "dev"
   }
@@ -64,17 +66,38 @@ resource "azurerm_eventhub" "nvs-stock-hub" {
   */
 }
 
-
-
-/*
+ 
 resource "azurerm_databricks_workspace" "nvs-databrickss-dev" {
   name                = "databricks-dev"
   resource_group_name = azurerm_resource_group.nvs-rg-compute.name
   location            = azurerm_resource_group.nvs-rg-compute.location
   sku                 = "trial"
 
+  #count  = var.exclude_databricks_trial ? 1 : 0
+
   tags = {
     Environment = "dev"
   }
-}*/
+} 
 
+
+ 
+resource "databricks_cluster" "dev_cluster" {
+  cluster_name            = "dev2-cluster"
+  spark_version           = "13.3.x-scala2.12"
+  node_type_id            = "Standard_DS3_v2"
+  autotermination_minutes = 20
+
+  autoscale {
+    min_workers = 2
+    max_workers = 8
+  }
+
+ 
+  library {
+    maven {
+      coordinates = "org.jsoup:jsoup:1.13.1"
+    }
+  }
+}
+ 

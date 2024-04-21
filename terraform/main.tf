@@ -4,6 +4,12 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">=3.0.0"
     }
+
+    databricks = {
+      source  = "databricks/databricks"
+      version = "~> 1.40"  // Allows updates within the minor version 1.40.x
+    }
+    
   }
 }
 
@@ -12,6 +18,8 @@ provider "azurerm" {
   skip_provider_registration = true # This is only required when the User, Service Principal, or Identity running Terraform lacks the permissions to register Azure Resource Providers.
   features {}
 }
+
+
 
 module "security" {
   source = "./modules/001_security"

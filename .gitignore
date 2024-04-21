@@ -2,4 +2,6 @@
 *.tfstate
 *.tfstate.backup
 .terraform/
-!test_scripts/
+sp_test_event_hub.py
+testproducer.py
+old_gen_log.py
