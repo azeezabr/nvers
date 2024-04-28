@@ -23,11 +23,13 @@ provider "azurerm" {
 
 module "security" {
   source = "./modules/001_security"
-  count  = var.exclude_security_module ? 1 : 0
+  //count  = var.exclude_security_module ? 1 : 0
+  storage_account_id = module.storage.storage_account_id
 }
 
 module "compute" {
   source = "./modules/002_compute"
+  notebooks_dir = "${path.module}/Users/azeez/Projects/nvers/util/notebook"
 }
 
 

@@ -71,3 +71,9 @@ resource "azurerm_storage_account" "nvs-gold" {
   account_kind             = "StorageV2"
   is_hns_enabled           = "true"
 }*/
+
+
+output "storage_account_id" {
+  value = azurerm_storage_account.nvs-project.id
+  description = "The ID of the created Azure Storage Account"
+}

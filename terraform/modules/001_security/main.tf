@@ -9,6 +9,7 @@ Create :
   5. Create Keyvault
   6. Add service principal secretes to key fault
   7. Elevation keyvault access policy.
+  8. assign storage contributor role 
 
 
 */
@@ -63,6 +64,13 @@ resource "azuread_service_principal_password" "srvc_pass" {
     rotation = time_rotating.time_rot.id
   }
 }
+
+resource "azurerm_role_assignment" "strg-contr" {
+  scope                = var.storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azuread_service_principal.service_princ.id
+}
+
 
 
 # Assign a Role to the Service Principal at the Subscription Level

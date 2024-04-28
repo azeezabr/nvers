@@ -38,3 +38,7 @@ variable "sevc_prc_secrt"{
 }
 
 
+variable "storage_account_id" {
+  description = "The ID of the Azure Storage Account"
+  type        = string
+}
