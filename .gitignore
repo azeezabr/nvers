@@ -5,3 +5,6 @@
 sp_test_event_hub.py
 testproducer.py
 old_gen_log.py
+*.ipynb
+note_script.sh
+myenv/
