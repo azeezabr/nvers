@@ -67,7 +67,7 @@ resource "azurerm_eventhub" "nvs-stock-hub" {
   
   
 }
-*/
+
  
 resource "azurerm_databricks_workspace" "nvs-databrickss-dev" {
   name                = "databricks-dev"
@@ -90,10 +90,7 @@ resource "databricks_cluster" "dev_cluster" {
   node_type_id            = "Standard_DS3_v2"
   autotermination_minutes = 20
 
-  /*autoscale {
-    min_workers = 1
-    max_workers = 2
-  }*/
+  
 
   spark_conf = {
     # Single-node
@@ -134,4 +131,4 @@ resource "databricks_notebook" "from_directory" {
 }
 
 
- 
+*/
