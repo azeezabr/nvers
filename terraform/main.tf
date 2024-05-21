@@ -30,6 +30,8 @@ module "security" {
 module "compute" {
   source = "./modules/002_compute"
   notebooks_dir = "${path.module}/Users/azeez/Projects/nvers/util/notebook"
+  key_vault_id  = module.security.key_vault_id
+  key_vault_uri = module.security.key_vault_uri
 }
 
 

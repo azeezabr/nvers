@@ -194,3 +194,13 @@ resource "azurerm_key_vault_secret" "secret" {
   ]
 }
  
+#output keyvault info to use in compute module to create secrete scope for databriks
+ output "key_vault_id" {
+  value = azurerm_key_vault.nvs-kv.id
+  description = "The ID of the Key Vault"
+}
+
+output "key_vault_uri" {
+  value = azurerm_key_vault.nvs-kv.vault_uri
+  description = "The DNS URI of the Key Vault"
+}

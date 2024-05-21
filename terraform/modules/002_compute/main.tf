@@ -67,7 +67,7 @@ resource "azurerm_eventhub" "nvs-stock-hub" {
   
   
 }
-
+*/
  
 resource "azurerm_databricks_workspace" "nvs-databrickss-dev" {
   name                = "databricks-dev"
@@ -113,6 +113,37 @@ resource "databricks_cluster" "dev_cluster" {
   }
 }
 
+/*
+resource "databricks_cluster" "cheap_dev_cluster" {
+  cluster_name            = "cheap_dev-cluster"
+  spark_version           = "13.3.x-scala2.12"
+  node_type_id            = "Standard_DS1_v2"
+  autotermination_minutes = 20
+
+  
+
+  spark_conf = {
+    # Single-node
+    "spark.databricks.cluster.profile" : "singleNode"
+    "spark.master" : "local[*]"
+  }
+
+  custom_tags = {
+    "ResourceClass" = "SingleNode"
+  }
+
+  depends_on = [
+    azurerm_databricks_workspace.nvs-databrickss-dev
+  ]
+
+  library {
+    maven {
+      coordinates = "com.microsoft.azure:azure-eventhubs-spark_2.12:2.3.21"
+    }
+  }
+}
+
+*/
 
 
 data "local_file" "notebook_files" {
@@ -131,4 +162,12 @@ resource "databricks_notebook" "from_directory" {
 }
 
 
-*/
+resource "databricks_secret_scope" "kv" {
+  name = "keyvault-managed"
+
+  keyvault_metadata {
+    resource_id = var.key_vault_id
+    dns_name    = var.key_vault_uri
+  }
+}
+

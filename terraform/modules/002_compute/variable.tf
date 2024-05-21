@@ -28,3 +28,15 @@ variable "notebooks_dir" {
   type        = string
   default     = "/Users/azeez/Projects/nvers/util/notebook"
 }
+
+
+variable "key_vault_id" {
+  type        = string
+  description = "The ID of the Key Vault"
+}
+
+variable "key_vault_uri" {
+  type        = string
+  description = "The DNS URI of the Key Vault"
+}
+
