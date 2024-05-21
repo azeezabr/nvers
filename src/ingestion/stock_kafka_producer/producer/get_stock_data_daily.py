@@ -1,3 +1,6 @@
+#%pip install -r /Workspace/Repos/a.azeez@techrole.ca/nvers/requirements.txt
+#%pip install aiohttp
+
 import asyncio
 import aiohttp
 import time

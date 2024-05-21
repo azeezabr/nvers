@@ -1,4 +1,6 @@
-asyncio
-aiohttp
-time
-json
+asyncio==3.4.3
+aiohttp==3.9.5
+confluent_kafka==2.4.0
+kafka-python==2.0.2
+azure-storage-file-datalake==12.15.0
+azure-identity==1.16.0
