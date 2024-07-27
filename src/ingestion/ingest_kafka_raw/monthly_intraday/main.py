@@ -19,34 +19,40 @@ client_id = os.environ.get("client_id")
 service_principal_secrete = os.environ.get("service_principal_secrete")
 
 
-#output_path = '/Users/azeez/Projects/nvers/src/data'
-output_path = f"abfss://{container}@{storage_account}.dfs.core.windows.net/timeseries-intraday-5m"
+output_path = '/Users/azeez/Projects/nvers/data'
+#output_path = f"abfss://{container}@{storage_account}.dfs.core.windows.net/stock-data-intraday/timeseries-5m"
 
 key = os.environ.get("KEY")
 
-symbols = get_stock_list.get_stock_list()#[:1]
+symbols = get_stock_list.get_stock_list()
 
-rate_limit = 500 
+rate_limit = 73 
 output_json = "stock_data.json"
 interval = '5min'
 function='TIME_SERIES_INTRADAY'
 pipe_line_type = 'daily'
 
-
+#Executed asyc for batch 25 for month 2020-02
 
 schema = monthly_schema()
-spark = create_spark_session("march")
+spark = create_spark_session("re-load_2")
 spark = set_spark_config(spark,storage_account,client_id,service_principal_secrete)
 
 producer = 'p'
 processor = StreamProcessor(spark)
 
-months_set = ['2018-06', '2018-05', '2018-04', '2018-03', '2018-02', 
- '2018-01', '2017-12', '2017-11', '2017-10', '2017-09', '2017-08', 
- '2017-07', '2017-06', '2017-05', '2017-04', '2017-03', '2017-02', 
- '2017-01', '2016-12', '2016-11', '2016-10', '2016-09', '2016-08', 
- '2016-07', '2016-06', '2016-05', '2016-04', '2016-03', '2016-02', 
- '2016-01', '2015-12']
+months_set = [
+    '2009-12', '2009-11', '2009-10', '2009-09', '2009-08', '2009-07', '2009-06', '2009-05', '2009-04', '2009-03', '2009-02', '2009-01',
+    '2008-12', '2008-11', '2008-10', '2008-09', '2008-08', '2008-07', '2008-06', '2008-05', '2008-04', '2008-03', '2008-02', '2008-01',
+    '2007-12', '2007-11', '2007-10', '2007-09', '2007-08', '2007-07', '2007-06', '2007-05', '2007-04', '2007-03', '2007-02', '2007-01',
+    '2006-12', '2006-11', '2006-10', '2006-09', '2006-08', '2006-07', '2006-06', '2006-05', '2006-04', '2006-03', '2006-02', '2006-01',
+    '2005-12', '2005-11', '2005-10', '2005-09', '2005-08', '2005-07', '2005-06', '2005-05', '2005-04', '2005-03', '2005-02', '2005-01',
+    '2004-12', '2004-11', '2004-10', '2004-09', '2004-08', '2004-07', '2004-06', '2004-05', '2004-04', '2004-03', '2004-02', '2004-01'
+]
+
+
+
+
 
 
 
@@ -94,8 +100,13 @@ async def main():
                         col("hour")
                     )
 
+                #parsed_df.coalesce(1).write.format('json').mode("overwrite").save(f'{output_path_local}/MRNA.json')
+
+
                 print(f'Executed asyc for batch {increament} for month {m}')
-                await asyncio.sleep(60)  
+                await asyncio.sleep(60) 
+
+                
 
                 processor.ingest_into_raw_zone(parsed_df, output_path)
                 print(f'Inserted into raw for batch {increament} for month {m}')

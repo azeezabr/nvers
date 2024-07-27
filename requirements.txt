@@ -4,3 +4,4 @@ confluent_kafka==2.4.0
 kafka-python==2.0.2
 azure-storage-file-datalake==12.15.0
 azure-identity==1.16.0
+pytz=2024.1

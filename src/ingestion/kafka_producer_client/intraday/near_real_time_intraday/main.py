@@ -26,7 +26,15 @@ kafka_topic = "stock-time-series"
 pipe_line_type = 'near-real-time'
 #pipe_line_type = 'daily'
 
-config = config.read_config()
+#config = config.read_config()
+
+config  = conf = {
+    'bootstrap.servers': 'pkc-12576z.us-west2.gcp.confluent.cloud:9092',
+    'sasl.mechanism': 'PLAIN',
+    'security.protocol': 'SASL_SSL',
+    'sasl.username': 'NKLSWDJWCWIE5FQE',
+    'sasl.password': '72pEJcSJaSMm2/zbqdhMa23N5dnVD7l2weDQNKC9JWFBIYyBuWadHX0XS5N6PImz'
+}
   
 producer = Producer(config)
 

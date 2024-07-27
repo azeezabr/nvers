@@ -5,6 +5,7 @@ import json
 from kafka import KafkaProducer
 import os
 from confluent_kafka import Producer
+import logging
 
 
 
@@ -21,6 +22,83 @@ def read_stream(self, spark, bootstrap_servers, topic,kafka_username,kafka_passw
         .load()
 
 
+
+# Configure logging to write to a file
+log_file_path = '/Users/azeez/Projects/nvers/src/ingestion/ingest_kafka_raw/monthly_intraday/error_log.log' #os.path.join(os.path.dirname(__file__), 'error_log.log')
+logging.basicConfig(
+    level=logging.ERROR,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()
+    ]
+)
+
+async def fetch_stock_data(session, function, symbol, key, timestamp, interval, pipe_line_type, month='02'):
+    api_url_nrt = f"https://www.alphavantage.co/query?function={function}&outputsize=full&symbol={symbol}&interval={interval}&apikey={key}"
+    api_url_daily = f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&apikey={key}&outputsize=full&month={month}'
+    api_url_batch = f'https://www.alphavantage.co/query?function={function}&symbol={symbol}&apikey={key}'
+    
+    api_url = (api_url_nrt if pipe_line_type == 'near-real-time' else
+               api_url_daily if pipe_line_type == 'daily' else
+               api_url_batch)
+
+    try:
+        async with session.get(api_url) as response:
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'application/json' in content_type:
+                data = await response.json()
+            else:
+                text = await response.text()
+                logging.error(f"Unexpected content type: {content_type}. Response text: {text}")
+                raise aiohttp.client_exceptions.ContentTypeError(
+                    response.request_info,
+                    response.history,
+                    message=f"Unexpected content type: {content_type}",
+                    headers=response.headers
+                )
+            
+            if pipe_line_type == 'near-real-time':
+                return {
+                    "symbol": symbol,
+                    'time': f'{timestamp}',
+                    "data": {
+                        "Meta Data": data.get("Meta Data", {}),
+                        f"Time Series: {timestamp}": data.get("Time Series (5min)", {}).get(f'{timestamp}', {})
+                    }
+                }
+            elif pipe_line_type == 'daily':
+                return {
+                    "symbol": symbol,
+                    'time': data["Meta Data"]["3. Last Refreshed"],
+                    "data": data
+                }
+            elif pipe_line_type == 'batch':
+                return data
+            else:
+                return 'invalid pipeline type'
+
+   
+    except aiohttp.client_exceptions.ContentTypeError as e:
+        error_message = f"ContentTypeError: {e} - Returning: Invalid content type: info: symbol - {symbol} - month - {month}"
+        logging.error(error_message)
+        return {"symbol": symbol, 'time': f'{timestamp}', "data": 'No data returned'}
+
+    except aiohttp.ClientError as e:
+        error_message = f"ClientError: {e} - Returning: Client error occurred: info: symbol - {symbol} - month - {month}"
+        logging.error(error_message)
+        return {"symbol": symbol, 'time': f'{timestamp}', "data": 'No data returned'}
+
+    except Exception as e:
+        error_message = f"Unexpected error: {e} - Returning: Unexpected error occurred: info: symbol - {symbol} - month - {month}"
+        logging.error(error_message)
+        return {"symbol": symbol, 'time': f'{timestamp}', "data": 'No data returned'}
+
+
+
+
+
+'''
 async def fetch_stock_data(session,function ,symbol,key,timestamp,interval,pipe_line_type,month):
 
     api_url_nrt = f"https://www.alphavantage.co/query?function={function}&outputsize=full&symbol={symbol}&interval={interval}&apikey={key}"
@@ -50,7 +128,7 @@ async def fetch_stock_data(session,function ,symbol,key,timestamp,interval,pipe_
 
         except KeyError as e:
             return {"symbol": symbol,'time': f'{timestamp}', "data": 'No data returned'}
-            
+'''            
             
 
 
