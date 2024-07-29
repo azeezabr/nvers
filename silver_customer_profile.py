@@ -1,4 +1,21 @@
 # Databricks notebook source
+import sys
+
+path = 'nvers/src/common/'
+
+if path not in sys.path:
+    sys.path.append(path)
+
+import schemas.overview as ov
+
+
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
 spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
