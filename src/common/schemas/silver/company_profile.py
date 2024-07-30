@@ -1,9 +1,10 @@
 from pyspark.sql.types import (
     StructType, 
     StructField, 
+    IntegerType,
     StringType,
     DateType,
-    IntegerType
+    
 )
 
 def company_profile_schema(): 
