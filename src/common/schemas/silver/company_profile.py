@@ -2,13 +2,14 @@ from pyspark.sql.types import (
     StructType, 
     StructField, 
     StringType,
-    DateType
+    DateType,
+    IntegerType
 )
 
 def company_profile_schema(): 
     return StructType([
-        StructField("PrimaryKey", StringType(), False),
-        StructField("Symbol", StringType(), True),
+        StructField("CompanyId", IntegerType(), False), 
+        StructField("Symbol", StringType(), True), 
         StructField("CompanyName", StringType(), True),
         StructField("CompanyDescription", StringType(), True),
         StructField("AssetType", StringType(), True),
@@ -21,4 +22,11 @@ def company_profile_schema():
         StructField("EffectiveDate", DateType(), True),
         StructField("EndDate", DateType(), True),
         StructField("IsCurrent", StringType(), True)
+    ])
+
+def symbol_mapping_schema():
+    return StructType([
+        StructField("Symbol", StringType(), False), 
+        StructField("CompanyId", IntegerType(), False),
+        StructField("EffectiveDate", DateType(), True), 
     ])
