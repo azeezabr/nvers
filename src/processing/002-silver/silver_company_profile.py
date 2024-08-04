@@ -48,7 +48,7 @@ container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
 bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
-mapping_table_path = f"{adls_path}/bronze/mapping"
+mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'company_profile'
 bronze_table_name = 'overview'
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
@@ -57,11 +57,16 @@ silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_
 
 bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
 #bronze_df = bronze_df.filter(bronze_df.Symbol == 'MSFT')
+#display(bronze_df)
 
 # COMMAND ----------
 
 mapping_schema = sv.symbol_mapping_schema()
 mapping_df = util.update_symbol_mapping(spark,bronze_df, mapping_table_path,mapping_schema)
+
+# COMMAND ----------
+
+display(mapping_df)
 
 # COMMAND ----------
 
@@ -152,7 +157,8 @@ silver_table_dt.alias("target").merge(
 
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
-#display(silver_customer_profile_df)
+display(silver_customer_profile_df)
+
 
 
 # COMMAND ----------

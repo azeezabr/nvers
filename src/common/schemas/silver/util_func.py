@@ -11,7 +11,7 @@ def load_bronze_data(spark,base,table_name):
 
 def update_symbol_mapping(spark,bronze_df, mapping_table_path,mapping_schema):
     try:
-        mapping_df = spark.read.format("delta").load(mapping_table_path)
+        mapping_df = spark.read.format("delta").load(f'{mapping_table_path}')
     except:
         mapping_df = spark.createDataFrame([], mapping_schema)
     new_symbols_df = bronze_df.select("Symbol").distinct().subtract(mapping_df.select("Symbol").distinct())
@@ -23,8 +23,17 @@ def update_symbol_mapping(spark,bronze_df, mapping_table_path,mapping_schema):
 
         updated_mapping_df = mapping_df.union(new_mapping_df)
         
-        updated_mapping_df.write.format("delta").mode("overwrite").save(mapping_table_path)
+        updated_mapping_df.write.format("delta").mode("overwrite").save(f'{mapping_table_path}')
     else:
         updated_mapping_df = mapping_df
     
     return updated_mapping_df
+
+
+
+def read_delta_to_df(spark,path):
+    silver_table_dt = DeltaTable.forPath(spark, f"{path}")
+    return silver_table_dt.toDF()
+
+
+    
