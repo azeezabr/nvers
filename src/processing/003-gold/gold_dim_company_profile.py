@@ -25,14 +25,7 @@ for path, modules in paths_and_modules.items():
 import silver.company_profile as sv
 import utils
 import silver.util_func as util
-
-schem = sv.company_profile_schema()
-
-#utils.market_hours_generator()
-#bronze_df = utils.load_bronze_data(bronze_layer_path,bronze_table_name )
-
-#bronze_df = ut.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
-
+ 
  
 
 
@@ -46,27 +39,34 @@ spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.win
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
-bronze_layer_path = f"{adls_path}/bronze"
-silver_layer_path = f"{adls_path}/silver"
-mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
-silver_table_name = 'company_profile'
-bronze_table_name = 'overview'
+
+silver_layer_path = f"{adls_path}/silver" 
+silver_table_name = 'company_profile' 
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
+silver_table_df = silver_table_dt.toDF()
+
+gold_layer_path = f"{adls_path}/gold" 
+gold_layer_path_table_name = 'DimCompanyProfile' 
+gold_table_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_layer_path_table_name}")
+gold_table_df = gold_table_dt.toDF()
+
+
 
 # COMMAND ----------
 
-bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
-#bronze_df = bronze_df.filter(bronze_df.Symbol == 'MSFT')
-#display(bronze_df)
+silver_table_df.createTempView("silver_company_profile")
 
 # COMMAND ----------
 
-mapping_schema = sv.symbol_mapping_schema()
-mapping_df = util.update_symbol_mapping(spark,bronze_df, mapping_table_path,mapping_schema)
+# MAGIC %sql
+# MAGIC -- Querying the Delta table by path
+# MAGIC SELECT * FROM delta.`{silver_layer_path}/{silver_table_name}`;
 
 # COMMAND ----------
 
-display(mapping_df)
+# MAGIC %sql
+# MAGIC SELECT * FROM silver_company_profile;
+# MAGIC
 
 # COMMAND ----------
 
