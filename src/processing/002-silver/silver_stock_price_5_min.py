@@ -91,7 +91,7 @@ company_profile_df.write.format("delta").mode("append").save(f'{silver_layer_pat
 
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
-#display(silver_customer_profile_df)
+display(silver_customer_profile_df)
 #print(silver_customer_profile_df.rdd.getNumPartitions())
 #silver_customer_profile_df.count()
 
@@ -100,9 +100,3 @@ silver_customer_profile_df = silver_table_dt.toDF()
 #silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 
 #silver_table_dt.delete()
-
-# COMMAND ----------
-
-# MAGIC %environment
-# MAGIC "client": "1"
-# MAGIC "base_environment": ""

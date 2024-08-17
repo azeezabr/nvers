@@ -38,13 +38,16 @@ schem = sv.company_profile_schema()
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
+
+# COMMAND ----------
+
 bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
 mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
