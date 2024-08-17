@@ -60,3 +60,7 @@ def chunk_list(lst, chunk_size):
     """Yield successive chunks from list."""
     for i in range(0, len(lst), chunk_size):
         yield lst[i:i + chunk_size]
+
+
+def load_bronze_data(base,table_name):
+    return spark.read.parquet(f'{base}/{table_name}')
