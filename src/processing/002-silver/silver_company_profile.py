@@ -7,10 +7,13 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
+base = dbutils.secrets.get(scope="nvers", key="usr_dir")
+
+
 paths_and_modules = {
-    f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.company_profile'],
-    f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/': ['utils'],
-    f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.util_func'],
+    f'{base}/nvers/src/common/schemas/': ['silver.company_profile'],
+    f'{base}/nvers/src/common/': ['utils'],
+    f'{base}/nvers/src/common/schemas/': ['silver.util_func'],
 }
 
 for path, modules in paths_and_modules.items():
@@ -28,10 +31,6 @@ import silver.util_func as util
 
 schem = sv.company_profile_schema()
 
-#utils.market_hours_generator()
-#bronze_df = utils.load_bronze_data(bronze_layer_path,bronze_table_name )
-
-#bronze_df = ut.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
 
  
 
@@ -174,9 +173,3 @@ display(silver_table_dt.toDF())
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-# MAGIC %environment
-# MAGIC "client": "1"
-# MAGIC "base_environment": ""
