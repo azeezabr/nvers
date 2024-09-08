@@ -69,5 +69,30 @@ spark.sql(f"""
     --PARTITIONED BY (Symbol, TradeYearMonth)
     CLUSTER BY (Symbol, TradeDate)
 """)
- 
+
+
+
+
+delta_table_path = f"{silver_layer_path}/{silver_table_name}"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{delta_table_path}` (
+        StockPriceId BIGINT GENERATED ALWAYS AS IDENTITY,
+        CompanyId long ,
+        Symbol STRING,
+        TradeDate DATE,
+        Open DOUBLE,
+        High DOUBLE,
+        Low DOUBLE,
+        Close DOUBLE,
+        Volume BIGINT,
+        TradeYearMonth INT,
+        EffectiveDate DATE
+    )
+    USING DELTA
+    PARTITIONED BY (Symbol, TradeYearMonth)
+    --CLUSTER BY (Symbol, TradeDate)
+""")
   '''

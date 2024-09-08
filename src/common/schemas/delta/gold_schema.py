@@ -61,7 +61,78 @@ spark.sql(f"""
 
 
  
+ gold_table_path = f"{gold_layer_path}/{gold_table_FactDividendPayout_nm}"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{gold_table_path}` (
+        FactDividendPayoutKey BIGINT GENERATED ALWAYS AS IDENTITY,
+        DimCompanyKey BIGINT,
+        DimDateKey INT,
+        AmountPerShare double,
+        AmountPerSharePerc double,
+        PayoutDate DATE,
+        CompanyID INT,
+        ProcessDate TIMESTAMP,
+        JobName STRING
+    ) USING DELTA
+        CLUSTER BY (DimDateKey)
+	""") 
  
+
+
+-- FactStockPriceMonthly
+
+
+ 
+gold_table_path = f"{gold_layer_path}/{gold_table_FactStorckPriceDaily_nm}"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{gold_table_path}` (
+        FactStockPriceMonthlyKey BIGINT GENERATED ALWAYS AS IDENTITY,
+        DimCompanyKey BIGINT,
+        DimDateKey INT,
+        Open DOUBLE,
+        High DOUBLE,
+        Low DOUBLE,
+        Close DOUBLE,
+        Volume BIGINT,
+        TradeYearMonth INT,
+        GapUpPerc DOUBLE,
+        ProcessDate TIMESTAMP,
+        JobName STRING
+    ) USING DELTA
+        PARTITIONED BY (DimCompanyKey, TradeYearMonth)
+	""")
+ 
+
+
+--- FactStorckPriceDaily
+
+gold_table_path = f"{gold_layer_path}/{gold_table_FactStorckPriceDaily_nm}"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{gold_table_path}` (
+        FactStockPriceMonthlyKey BIGINT GENERATED ALWAYS AS IDENTITY,
+        DimCompanyKey BIGINT,
+        DimDateKey INT,
+        Open DOUBLE,
+        High DOUBLE,
+        Low DOUBLE,
+        Close DOUBLE,
+        Volume BIGINT,
+        TradeYearMonth INT,
+        GapUpPerc DOUBLE,
+        ProcessDate TIMESTAMP,
+        JobName STRING
+    ) USING DELTA
+        PARTITIONED BY (DimCompanyKey, TradeYearMonth)
+	""")
 
 
  '''
