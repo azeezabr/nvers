@@ -1,17 +1,23 @@
 # Databricks notebook source
+businessDate = '2024-08-04'
+
+# COMMAND ----------
+
 import sys, os, importlib
 import importlib
-from pyspark.sql.functions import lit, current_date, monotonically_increasing_id,current_date,col
+from pyspark.sql.functions import lit, current_date, monotonically_increasing_id,current_date,col, when, expr
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DateType
 from delta.tables import DeltaTable
 
 # COMMAND ----------
 
 paths_and_modules = {
+    
     f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.company_profile'],
     f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/': ['utils'],
-    f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.util_func'],
+    f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.util_func']
 }
+
 
 for path, modules in paths_and_modules.items():
     abs_path = os.path.abspath(path)
@@ -41,101 +47,132 @@ container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
 
 silver_layer_path = f"{adls_path}/silver" 
-silver_table_name = 'company_profile' 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-silver_table_df = silver_table_dt.toDF()
+sv_company_profile_nm = 'company_profile' 
+sv_company_profile_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{sv_company_profile_nm}")
+sv_company_profile_df = sv_company_profile_dt.toDF().filter(col('EndDate').isNull())
+
+sv_company_metrics_nm = 'company_symbol_metrics' 
+sv_company_metrics_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{sv_company_metrics_nm}")
+sv_company_metrics_df = sv_company_metrics_dt.toDF().filter(col('EndDate') == businessDate)
 
 gold_layer_path = f"{adls_path}/gold" 
-gold_layer_path_table_name = 'DimCompanyProfile' 
-gold_table_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_layer_path_table_name}")
-gold_table_df = gold_table_dt.toDF()
+gold_table_DimCompany_nm = 'DimCompany' 
+gold_table_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_DimCompany_nm}")
+gold_table_df = gold_table_dt.toDF().filter(col('IsActive') == 'Y')
 
 
 
 # COMMAND ----------
 
-silver_table_df.createTempView("silver_company_profile")
+joined_df = sv_company_metrics_df.alias('sm') \
+    .join(sv_company_profile_df.alias('cp'), 
+          (col('sm.CompanyId') == col('cp.CompanyId')), 
+          "inner")
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Querying the Delta table by path
-# MAGIC SELECT * FROM delta.`{silver_layer_path}/{silver_table_name}`;
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT * FROM silver_company_profile;
-# MAGIC
-
-# COMMAND ----------
-
-company_profile_df = bronze_df.join(mapping_df, on="Symbol", how="inner").select(
-        "CompanyId",
-        "Symbol",
-        "Name",
-        "Description",
-        "AssetType",
-        "Exchange",
-        "Currency",
-        "Country",
-        "Sector",
-        "Industry",
-        "Address"
-    ).withColumnRenamed("Name", "CompanyName") \
-     .withColumnRenamed("Description", "CompanyDescription") \
-     .withColumn("EffectiveDate", current_date()) \
-     .withColumn("EndDate", lit(None).cast(DateType())) \
-     .withColumn("IsCurrent", lit("Y")) 
+joined_df = joined_df.withColumn(
+    "CapCategory",
+    when(col("MarketCapitalization") <= 100000000, "LOW")
+    .when((col("MarketCapitalization") > 100000000) & (col("MarketCapitalization") <= 500000000), "MID")
+    .otherwise("LARGE")
+)
 
 
 # COMMAND ----------
 
-merge_condition = "trim(target.CompanyId) = trim(source.CompanyId) AND trim(target.IsCurrent) = 'Y'"
-    
-    
+joined_df = joined_df.withColumn(
+    "FloatCategory",
+    when(col("SharesOutstanding") <= 1000000, "NANO")
+    .when((col("SharesOutstanding") > 1000000) & (col("SharesOutstanding") <= 3000000), "BEAR LOW")
+    .when((col("SharesOutstanding") > 3000000) & (col("SharesOutstanding") <= 5000000), "LOW")
+    .when((col("SharesOutstanding") > 5000000) & (col("SharesOutstanding") <= 10000000), "DECENT")
+    .when((col("SharesOutstanding") > 10000000) & (col("SharesOutstanding") <= 30000000), "ABOVE DECENT")
+    .otherwise("BIGGER")
+).withColumn("EffectiveFromDate", current_date()) \
+     .withColumn("EndToDate", lit(None).cast(DateType())) \
+     .withColumn("IsActive", lit("Y")) 
+
+# COMMAND ----------
+
+result_df = joined_df.select(
+    col('EffectiveFromDate'),
+    col('EndToDate'),
+    col('cp.Symbol').alias('CompanySymbol'),
+    col('cp.CompanyName'),
+    col('cp.CompanyDescription'),
+    col('cp.AssetType'),
+    col('cp.Exchange'),
+    col('cp.Currency'),
+    col('cp.Country'),
+    col('cp.Sector'),
+    col('cp.Industry'),
+    col('cp.Address'),
+    col('cp.CompanyId'),
+    col('CapCategory'),
+    col('FloatCategory'),
+    col('IsActive')
+)
+
+
+# COMMAND ----------
+
+#silver_table_df.createTempView("silver_company_profile")
+
+# COMMAND ----------
+
+
+# Define merge condition
+merge_condition = "target.CompanyId = source.CompanyId AND trim(target.IsActive) = 'Y'"
+
+# Define update set and insert set dictionaries
 update_set = {
-        "EndDate": current_date(),
-        "IsCurrent": "'N' "
-    }
-    
+    "EndToDate": "current_date()",
+    "IsActive": "'N'"
+}
+
 insert_set = {
-        "CompanyId": "source.CompanyId",
-        "Symbol": "source.Symbol",
-        "CompanyName": "source.CompanyName",
-        "CompanyDescription": "source.CompanyDescription",
-        "AssetType": "source.AssetType",
-        "Exchange": "source.Exchange",
-        "Currency": "source.Currency",
-        "Country": "source.Country",
-        "Sector": "source.Sector",
-        "Industry": "source.Industry",
-        "Address": "source.Address",
-        "EffectiveDate": "source.EffectiveDate",
-        "EndDate": "source.EndDate",
-        "IsCurrent": "source.IsCurrent",
-    }
-    
+    "EffectiveFromDate": "source.EffectiveFromDate",
+    "EndToDate": "source.EndToDate",
+    "CompanySymbol": "source.CompanySymbol",
+    "CompanyName": "source.CompanyName",
+    "CompanyDescription": "source.CompanyDescription",
+    "AssetType": "source.AssetType",
+    "Exchange": "source.Exchange",
+    "Currency": "source.Currency",
+    "Country": "source.Country",
+    "Sector": "source.Sector",
+    "Industry": "source.Industry",
+    "Address": "source.Address",
+    "CompanyID": "source.CompanyId",
+    "CapCategory": "source.CapCategory",
+    "FloatCategory": "source.FloatCategory",
+    "IsActive": "source.IsActive"
+}
+
+# Define update and insert conditions
 update_condition = """
-                        
-        trim(target.CompanyName) <> trim(source.CompanyName) OR
-        trim(target.CompanyDescription) <> trim(source.CompanyDescription) OR
-        trim(target.AssetType) <> trim(source.AssetType) OR
-        trim(target.Exchange) <> trim(source.Exchange) OR
-        trim(target.Currency) <> trim(source.Currency) OR
-        trim(target.Country) <> trim(source.Country) OR
-        trim(target.Sector) <> trim(source.Sector) OR
-        trim(target.Industry) <> trim(source.Industry) OR
-        trim(target.Address) <> trim(source.Address)
-        """
+    trim(target.CompanyName) <> trim(source.CompanyName) OR
+    trim(target.CompanyDescription) <> trim(source.CompanyDescription) OR
+    trim(target.AssetType) <> trim(source.AssetType) OR
+    trim(target.Exchange) <> trim(source.Exchange) OR
+    trim(target.Currency) <> trim(source.Currency) OR
+    trim(target.Country) <> trim(source.Country) OR
+    trim(target.Sector) <> trim(source.Sector) OR
+    trim(target.Industry) <> trim(source.Industry) OR
+    trim(target.Address) <> trim(source.Address) OR
+    trim(target.CapCategory) <> trim(source.CapCategory) OR
+    trim(target.FloatCategory) <> trim(source.FloatCategory)
+"""
 
-insert_condition = merge_condition = "source.IsCurrent = 'N'"
+insert_condition = "source.IsActive = 'N'"
 
+ 
 
 # COMMAND ----------
 
-silver_table_dt.alias("target").merge(
-        company_profile_df.alias("source"),
+gold_table_dt.alias("target").merge(
+        result_df.alias("source"),
         merge_condition
     ).whenMatchedUpdate(condition= update_condition,
         set=update_set) \
@@ -144,8 +181,8 @@ silver_table_dt.alias("target").merge(
 
 # COMMAND ----------
 
-silver_table_dt.alias("target").merge(
-        company_profile_df.alias("source"),
+gold_table_dt.alias("target").merge(
+        result_df.alias("source"),
         merge_condition 
     ).whenNotMatchedInsert(
       values=insert_set) \
@@ -155,28 +192,30 @@ silver_table_dt.alias("target").merge(
 
 # COMMAND ----------
 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-silver_customer_profile_df = silver_table_dt.toDF()
-display(silver_customer_profile_df)
+#display(result_df.filter(col('CompanySymbol') == "WING"))
+#display(gold_table_dt.toDF().filter(col('CompanySymbol') == "WING"))
 
 
 
 # COMMAND ----------
 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-
-#silver_table_dt.delete()
+gold_table_dt.toDF().count()
 
 # COMMAND ----------
 
-display(silver_table_dt.toDF())
+'''
+gold_table_dt.update(
+    condition = expr("CompanySymbol = 'WING'"),
+    set = {
+        "CompanyName": expr("'test test'")
+    }
+)
+'''
+
+# COMMAND ----------
+
+#gold_table_dt.delete()
 
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-# MAGIC %environment
-# MAGIC "client": "1"
-# MAGIC "base_environment": ""
