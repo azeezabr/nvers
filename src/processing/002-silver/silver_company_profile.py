@@ -28,18 +28,11 @@ import silver.util_func as util
 
 schem = sv.company_profile_schema()
 
-#utils.market_hours_generator()
-#bronze_df = utils.load_bronze_data(bronze_layer_path,bronze_table_name )
-
-#bronze_df = ut.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
-
- 
-
 
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{dbutils.secrets.get('nvers','storage_name')}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
 
@@ -52,11 +45,6 @@ mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'company_profile'
 bronze_table_name = 'overview'
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-
-# COMMAND ----------
-
-#mapping_table_dt = DeltaTable.forPath(spark, f"{mapping_table_path}")
-#mapping_table_dt.toDF().select("Symbol").distinct().count()
 
 # COMMAND ----------
 

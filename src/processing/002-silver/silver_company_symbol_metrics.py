@@ -127,7 +127,7 @@ silver_table_dt.alias("target").merge(
 
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
-#display(silver_customer_profile_df)
+display(silver_customer_profile_df)
 
 
 # COMMAND ----------
