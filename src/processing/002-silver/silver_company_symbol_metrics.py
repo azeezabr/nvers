@@ -7,6 +7,17 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
+
+# COMMAND ----------
+
 usr_path = dbutils.secrets.get(scope="nvers", key="usr_dir")
 
 paths_and_modules = {
@@ -30,13 +41,6 @@ import silver.util_func as util
 
 schem = sv.company_profile_schema()
 
-#utils.market_hours_generator()
-#bronze_df = utils.load_bronze_data(bronze_layer_path,bronze_table_name )
-
-#bronze_df = ut.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
-
- 
-
 
 
 # COMMAND ----------
@@ -52,7 +56,7 @@ bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
 symbol_mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'company_symbol_metrics'
-bronze_table_name = 'overview'
+bronze_table_name = f'overview/year={year}/month={month}/day={day}'
 
 # COMMAND ----------
 
@@ -63,7 +67,7 @@ symbol_mapping_df = util.read_delta_to_df(spark, f"{symbol_mapping_table_path}")
 
 bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
 #bronze_df = bronze_df.filter(bronze_df.Symbol == 'MSFT')
-#display(bronze_df)
+#display(bronze_df.count())
 
 # COMMAND ----------
 
@@ -135,9 +139,3 @@ silver_customer_profile_df = silver_table_dt.toDF()
 # COMMAND ----------
 
 
-
-# COMMAND ----------
-
-# MAGIC %environment
-# MAGIC "client": "1"
-# MAGIC "base_environment": ""

@@ -7,10 +7,8 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
-businessDate = '2004-03-31'
+businessDate = '2017-05-22'
 businessDate = to_date(lit(businessDate), 'yyyy-MM-dd') 
-TradeYearMonth = 200403
-print(TradeYearMonth)
 
 # COMMAND ----------
 
@@ -51,9 +49,9 @@ adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
 
 
 silver_layer_path = f"{adls_path}/silver" 
-sv_stock_price_monthly_nm = 'stock_price_monthly' 
-sv_stock_price_monthly_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{sv_stock_price_monthly_nm}")
-sv_stock_price_monthly_df = sv_stock_price_monthly_dt.toDF().filter(col('TradeYearMonth')  == 200403)
+sv_stock_price_daily_nm = 'stock_price_daily' 
+sv_stock_price_daily_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{sv_stock_price_daily_nm}")
+sv_stock_price_daily_df = sv_stock_price_daily_dt.toDF().filter(col('TradeDate')  == businessDate)
 
  
 gold_layer_path = f"{adls_path}/gold" 
@@ -62,7 +60,7 @@ gold_table_DimCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_t
 gold_table_DimCompany_df = gold_table_DimCompany_dt.toDF().filter(col('IsActive') == 'Y')
 
  
-gold_table_FactStorckPriceMonthly_nm = 'FactStockPriceMonthly' 
+gold_table_FactStorckPriceDaily_nm = 'FactStockPriceDaily' 
  
 
 
@@ -71,7 +69,7 @@ gold_table_FactStorckPriceMonthly_nm = 'FactStockPriceMonthly'
 notebook_path = str(dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath())
 
 
-result_df = sv_stock_price_monthly_df \
+result_df = sv_stock_price_daily_df \
     .withColumn("GapUpPerc", lit((col('Close') - col('Open')) /col('Close') * 100
                                     ).cast("double")) \
     .withColumn("DimDateKey", date_format(to_date(col("TradeDate"), 'yyyy-MM-dd'), "yyyyMMdd").cast("int")) \
@@ -81,7 +79,7 @@ result_df = sv_stock_price_monthly_df \
 
 # COMMAND ----------
 
-#display(result_df)
+display(result_df)
 
 # COMMAND ----------
 
@@ -123,14 +121,14 @@ print(final_df.rdd.getNumPartitions())
 
 # COMMAND ----------
 
-final_df.write.format("delta").mode("append").save(f'{gold_layer_path}/{gold_table_FactStorckPriceMonthly_nm}')
+final_df.write.format("delta").mode("append").save(f'{gold_layer_path}/{gold_table_FactStorckPriceDaily_nm}')
 
 
 # COMMAND ----------
 
 gold_table_FactCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_FactStorckPriceMonthly_nm}")
 #gold_table_FactCompany_df = gold_table_FactCompany_dt.toDF().filter(col('IsActive') == businessDate)
-display(gold_table_FactCompany_dt.toDF().filter(col('DimCompanyKey').isNotNull()))
+display(gold_table_FactCompany_dt.toDF().filter(col('DimCompanyKey').isNull()))
 
 # COMMAND ----------
 

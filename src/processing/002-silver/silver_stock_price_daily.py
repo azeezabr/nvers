@@ -91,9 +91,9 @@ company_profile_df.write.format("delta").mode("append").save(f'{silver_layer_pat
 
 # COMMAND ----------
 
-#silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-#silver_customer_profile_df = silver_table_dt.toDF()
-#display(silver_customer_profile_df)
+silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
+silver_customer_profile_df = silver_table_dt.toDF()
+display(silver_customer_profile_df)
 #print(silver_customer_profile_df.rdd.getNumPartitions())
 #silver_customer_profile_df.count()
 

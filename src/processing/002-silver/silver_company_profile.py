@@ -55,6 +55,11 @@ silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_
 
 # COMMAND ----------
 
+#mapping_table_dt = DeltaTable.forPath(spark, f"{mapping_table_path}")
+#mapping_table_dt.toDF().select("Symbol").distinct().count()
+
+# COMMAND ----------
+
 bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
 #bronze_df = bronze_df.filter(bronze_df.Symbol == 'MSFT')
 #display(bronze_df)
@@ -66,7 +71,7 @@ mapping_df = util.update_symbol_mapping(spark,bronze_df, mapping_table_path,mapp
 
 # COMMAND ----------
 
-display(mapping_df)
+#display(mapping_df.count())
 
 # COMMAND ----------
 
@@ -155,21 +160,23 @@ silver_table_dt.alias("target").merge(
 
 # COMMAND ----------
 
+
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
 display(silver_customer_profile_df)
 
 
 
+
 # COMMAND ----------
 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
+#silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 
 #silver_table_dt.delete()
 
 # COMMAND ----------
 
-display(silver_table_dt.toDF())
+#display(silver_table_dt.toDF().where(col("IsCurrent") =="Y").dropDuplicates(["Symbol"]).count() )
 
 # COMMAND ----------
 
