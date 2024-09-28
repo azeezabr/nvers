@@ -7,6 +7,17 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
+
+# COMMAND ----------
+
 usr_path = dbutils.secrets.get(scope="nvers", key="usr_dir")
 
 paths_and_modules = {
@@ -34,18 +45,18 @@ schem = sv.company_profile_schema()
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
 bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
 symbol_mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
-silver_table_name = 'stock_price_monthly'
-bronze_table_name = 'timeseries-monthly/year=2004/month=3'
+silver_table_name = 'stock_price_daily'
+bronze_table_name = f'timeseries-daily/year={year}/month={month}/day={day}'
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
 
@@ -58,6 +69,14 @@ bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
 #bronze_df = bronze_df.filter(bronze_df.symbol == 'MSFT')
 
  
+
+# COMMAND ----------
+
+#display(bronze_df)
+
+# COMMAND ----------
+
+#display(bronze_df.filter(col("timestamp") != lit("2024-04-30")))
 
 # COMMAND ----------
 
@@ -91,13 +110,13 @@ company_profile_df.write.format("delta").mode("append").save(f'{silver_layer_pat
 
 # COMMAND ----------
 
-'''
+
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
 display(silver_customer_profile_df)
 #print(silver_customer_profile_df.rdd.getNumPartitions())
 #silver_customer_profile_df.count()
-'''
+
 
 # COMMAND ----------
 

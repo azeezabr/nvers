@@ -1,5 +1,6 @@
 # Databricks notebook source
-
+dbutils.widgets.text("businessDate", "YYYY-MM-DD")
+businessDate = dbutils.widgets.get("businessDate")
 
 
 # COMMAND ----------
@@ -12,7 +13,6 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
-businessDate = '2024-08-04'
 businessDate = to_date(lit(businessDate), 'yyyy-MM-dd')
 
 # COMMAND ----------
@@ -70,6 +70,10 @@ gold_table_DimCompany_df = gold_table_DimCompany_dt.toDF().filter(col('IsActive'
 gold_table_FactCompany_nm = 'FactCompany' 
  
 
+
+# COMMAND ----------
+
+#display(sv_company_metrics_df)
 
 # COMMAND ----------
 
@@ -133,14 +137,19 @@ final_df = result_df.join(
 
 # COMMAND ----------
 
+final_df = final_df.coalesce(4)
+
+# COMMAND ----------
+
 final_df.write.format("delta").mode("append").save(f'{gold_layer_path}/{gold_table_FactCompany_nm}')
 
 
 # COMMAND ----------
 
-gold_table_FactCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_FactCompany_nm}")
+#gold_table_FactCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_FactCompany_nm}")
 #gold_table_FactCompany_df = gold_table_FactCompany_dt.toDF().filter(col('IsActive') == businessDate)
-display(gold_table_FactCompany_dt.toDF())
+#display(gold_table_FactCompany_dt.toDF())
+#gold_table_FactCompany_dt.delete()
 
 # COMMAND ----------
 

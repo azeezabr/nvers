@@ -1,5 +1,8 @@
 # Databricks notebook source
-businessDate = '2024-08-04'
+
+dbutils.widgets.text("businessDate", "YYYY-MM-DD")
+businessDate = dbutils.widgets.get("businessDate")
+
 
 # COMMAND ----------
 
@@ -64,6 +67,14 @@ gold_table_df = gold_table_dt.toDF().filter(col('IsActive') == 'Y')
 
 # COMMAND ----------
 
+#display(sv_company_profile_df.count())
+
+# COMMAND ----------
+
+#display(sv_company_profile_df)
+
+# COMMAND ----------
+
 joined_df = sv_company_metrics_df.alias('sm') \
     .join(sv_company_profile_df.alias('cp'), 
           (col('sm.CompanyId') == col('cp.CompanyId')), 
@@ -114,6 +125,10 @@ result_df = joined_df.select(
     col('IsActive')
 )
 
+
+# COMMAND ----------
+
+result_df = result_df.coalesce(4)
 
 # COMMAND ----------
 
@@ -199,7 +214,7 @@ gold_table_dt.alias("target").merge(
 
 # COMMAND ----------
 
-gold_table_dt.toDF().count()
+#gold_table_dt.toDF().count()
 
 # COMMAND ----------
 

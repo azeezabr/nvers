@@ -22,6 +22,7 @@ def company_profile_schema():
         StructField("Address", StringType(), True),
         StructField("EffectiveDate", DateType(), True),
         StructField("EndDate", DateType(), True),
+
         StructField("IsCurrent", StringType(), True)
     ])
 

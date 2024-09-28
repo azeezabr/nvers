@@ -18,8 +18,11 @@ SID = dbutils.secrets.get('nvers','SID')
 
 
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
-bronze_layer_path = f"{adls_path}/bronze"
-
+process_store_path = f"{adls_path}/process_store"
+job_control_table_name = 'job_control_table'
+backfill_control_table_name = 'backfill_control_table'
+job_control_table_path = f"{process_store_path}/{job_control_table_name}"
+backfill_control_table_path = f"{process_store_path}/{backfill_control_table_name}"
 
 
 headers = {
@@ -55,15 +58,32 @@ def check_file_exists(year, month, day):
 
 # COMMAND ----------
 
+def check_continue_flag():
+    df = spark.read.format("delta").load(job_control_table_path)
+    flag = df.where("continue_flag = 'Y'").count()
+    return flag > 0
+
+# COMMAND ----------
+
+def log_job_details(job_id, run_id, processed_date, start_time, end_time, status, cluster_id, notebook_path, result_message):
+    spark.sql(f"""
+        INSERT INTO delta.`{backfill_control_table_path}`
+        (job_id, run_id, processed_date, start_time, end_time, status, cluster_id, notebook_path, result_message, last_updated)
+        VALUES ('{job_id}', '{run_id}', '{processed_date}', '{start_time}', '{end_time}', '{status}', '{cluster_id}', '{notebook_path}', '{result_message}', current_timestamp())
+    """)
+
+# COMMAND ----------
+
 def create_backfill_job(year, month, day,user_dir,existing_cluster_id):
     job_name = f"Backfill Job {year}-{str(month).zfill(1)}-{str(day).zfill(1)}"
+    businessdate = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}" 
     job_json = {
         "name": job_name,
         "tasks": [
             {
-                "task_key": "company_profile_bronze_to_silver",
+                "task_key": "silver_company_mapping",
                 "notebook_task": {
-                    "notebook_path": f"{user_dir}/nvers/src/processing/002-silver/silver_company_profile",
+                    "notebook_path": f"{user_dir}/nvers/src/processing/002-silver/key_map_company",
                     "base_parameters": {
                         "year": year,
                         "month": month,
@@ -73,8 +93,26 @@ def create_backfill_job(year, month, day,user_dir,existing_cluster_id):
                 "existing_cluster_id": f"{existing_cluster_id}"
                 
             },
+
             {
-                "task_key": "company_metrics_bronze_to_silver",
+                "task_key": "silver_company_profile",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/002-silver/silver_company_profile",
+                    "base_parameters": {
+                        "year": year,
+                        "month": month,
+                        "day": day
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "silver_company_mapping"}
+                ]
+            },
+
+            {
+                "task_key": "silver_company_metrics",
                 "notebook_task": {
                     "notebook_path": f"{user_dir}/nvers/src/processing/002-silver/silver_company_symbol_metrics",
                     "base_parameters": {
@@ -86,7 +124,93 @@ def create_backfill_job(year, month, day,user_dir,existing_cluster_id):
                 "existing_cluster_id": f"{existing_cluster_id}",
 
                 "depends_on": [
-                    {"task_key": "company_profile_bronze_to_silver"}
+                    {"task_key": "silver_company_mapping"}
+                ]
+            },
+
+            {
+                "task_key": "silver_stock_price_daily",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/002-silver/silver_stock_price_daily",
+                    "base_parameters": {
+                        "year": year,
+                        "month": month,
+                        "day": day
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "silver_company_mapping"}
+                ]
+            },
+
+            {
+                "task_key": "gold_dim_company",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/003-gold/gold_dim_company",
+                    "base_parameters": {
+                        "businessDate": businessdate
+                    
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "silver_company_metrics"},
+                    {"task_key": "silver_company_profile"}
+                ]
+            },
+
+
+            {
+                "task_key": "gold_fact_company",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/003-gold/gold_fact_company",
+                    "base_parameters": {
+                        "businessDate": businessdate
+                    
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "gold_dim_company"}
+                ]
+            },
+
+
+            {
+                "task_key": "gold_fact_DividendPayout",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/003-gold/gold_fact_FactDividendPayout",
+                    "base_parameters": {
+                        "businessDate": businessdate
+                    
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "gold_dim_company"}
+                ]
+            },
+
+            {
+                "task_key": "gold_fact_StockPriceDaily",
+                "notebook_task": {
+                    "notebook_path": f"{user_dir}/nvers/src/processing/003-gold/gold_fact_FactStockPriceDaily",
+                    "base_parameters": {
+                        "businessDate": businessdate
+                    
+                    }
+                },
+                "existing_cluster_id": f"{existing_cluster_id}",
+
+                "depends_on": [
+                    {"task_key": "gold_dim_company"},
+                    {"task_key": "silver_stock_price_daily"}
+                    
                 ]
             },
             # Add more tasks later
@@ -152,7 +276,7 @@ def check_job_status(run_id):
 # COMMAND ----------
 
 def main():
-    start_date = datetime(2024, 8, 16)
+    start_date = datetime(2024, 7, 31)
     end_date = datetime(2024, 1, 1)
 
     current_date = start_date
@@ -162,13 +286,27 @@ def main():
         month = current_date.month
         day = current_date.day
 
+        if not check_continue_flag():
+            print("Job control flag set to 'N'. Stopping the backfill process.")
+            break
+
         if check_file_exists(year, month, day):
             job_id = create_backfill_job(year, month, day,user_dir,existing_cluster_id)
             if job_id:
                 run_id = run_job(job_id)
                 if run_id:
-                    # Wait for the job to complete before moving to the next date
+                    start_time = datetime.now()
+
                     job_success = check_job_status(run_id)
+
+                    end_time = datetime.now()
+                    status = "SUCCESS" if job_success else "FAILED"
+                    try:
+                        log_job_details(job_id, run_id, current_date.date(), start_time, end_time, status, existing_cluster_id, "REDACTED", "")
+                        print(f"Job details logged successfully for job_id: {job_id}, run_id: {run_id}")
+                    except Exception as e:
+                        print(f"Failed to log job details for job_id: {job_id}, run_id: {run_id}. Error: {str(e)}")
+                    
                     if not job_success:
                         print(f"Job for {year}-{month}-{day} failed. Exiting...")
                         break

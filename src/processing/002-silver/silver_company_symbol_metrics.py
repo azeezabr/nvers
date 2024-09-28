@@ -16,6 +16,8 @@ year = dbutils.widgets.get("year")
 month = dbutils.widgets.get("month")
 day = dbutils.widgets.get("day")
 
+formatted_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+
 # COMMAND ----------
 
 usr_path = dbutils.secrets.get(scope="nvers", key="usr_dir")
@@ -45,10 +47,6 @@ schem = sv.company_profile_schema()
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
@@ -57,6 +55,10 @@ silver_layer_path = f"{adls_path}/silver"
 symbol_mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'company_symbol_metrics'
 bronze_table_name = f'overview/year={year}/month={month}/day={day}'
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
 
@@ -85,10 +87,18 @@ company_profile_df = bronze_df.join(symbol_mapping_df, on="Symbol", how="left").
         "DividendYield" ,
         "DividendDate" ,
         "ExDividendDate" 
-    ).withColumn("EffectiveDate", current_date()) \
-     .withColumn("EndDate", current_date()) \
+    ).withColumn("EffectiveDate", lit(f'{formatted_date}')) \
+     .withColumn("EndDate", lit(f'{formatted_date}')) \
      .withColumn("IsCurrent", lit("Y")) 
 
+
+# COMMAND ----------
+
+company_profile_df = company_profile_df.coalesce(4)
+
+# COMMAND ----------
+
+#display(company_profile_df)
 
 # COMMAND ----------
 
@@ -125,9 +135,9 @@ silver_table_dt.alias("target").merge(
 
 # COMMAND ----------
 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-silver_customer_profile_df = silver_table_dt.toDF()
-display(silver_customer_profile_df)
+#silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
+#silver_customer_profile_df = silver_table_dt.toDF()
+#display(silver_customer_profile_df)
 
 
 # COMMAND ----------

@@ -1,9 +1,20 @@
 # Databricks notebook source
 import sys, os, importlib
 import importlib
-from pyspark.sql.functions import lit, current_date, monotonically_increasing_id,current_date,col
+from pyspark.sql.functions import lit, current_date, monotonically_increasing_id,current_date,col,year,month,dayofmonth
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DateType
 from delta.tables import DeltaTable
+
+# COMMAND ----------
+
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
 
 # COMMAND ----------
 
@@ -34,10 +45,6 @@ schem = sv.company_profile_schema()
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
@@ -45,12 +52,17 @@ bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
 symbol_mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'stock_price_daily'
-bronze_table_name = 'timeseries-daily/year=2017/month=5'
+bronze_table_name = f'timeseries-daily/year={year}/month={month}/day={day}'
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
 
 #silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 symbol_mapping_df = util.read_delta_to_df(spark, f"{symbol_mapping_table_path}")
+#symbol_mapping_df.show()
 
 # COMMAND ----------
 
@@ -66,6 +78,8 @@ bronze_df = bronze_df.selectExpr("symbol as Symbol", "cast(Timestamp as date) as
 
 # COMMAND ----------
 
+from pyspark.sql.functions import year,month,dayofmonth
+
 company_profile_df = bronze_df.join(symbol_mapping_df, on="Symbol", how="left").select(
         "CompanyId",
         "Symbol",
@@ -76,8 +90,10 @@ company_profile_df = bronze_df.join(symbol_mapping_df, on="Symbol", how="left").
         "Close" ,
         "Volume" ,
         "TradeYearMonth",
-    ).withColumn("EffectiveDate", current_date()) 
- 
+    ).withColumn("EffectiveDate", current_date()) \
+     .withColumn("Year", year(col("TradeDate"))) \
+     .withColumn("Month", month(col("TradeDate"))) \
+     .withColumn("Day", dayofmonth(col("TradeDate")))
 
 
 # COMMAND ----------
@@ -86,19 +102,34 @@ company_profile_df = bronze_df.join(symbol_mapping_df, on="Symbol", how="left").
 
 # COMMAND ----------
 
+#display(company_profile_df.filter(col("CompanyId").isNull()))
+
+
+# COMMAND ----------
+
+company_profile_df = company_profile_df.coalesce(4)
+
+# COMMAND ----------
+
 company_profile_df.write.format("delta").mode("append").save(f'{silver_layer_path}/{silver_table_name}')
 
 
 # COMMAND ----------
 
-silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
-silver_customer_profile_df = silver_table_dt.toDF()
-display(silver_customer_profile_df)
+#silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
+#silver_customer_profile_df = silver_table_dt.toDF()
+#display(silver_customer_profile_df.filter(col("TradeDate") == lit("2024-06-02")))
 #print(silver_customer_profile_df.rdd.getNumPartitions())
 #silver_customer_profile_df.count()
+#silver_customer_profile_df.printSchema()
+#silver_table_dt.delete()
 
 # COMMAND ----------
 
 #silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 
 #silver_table_dt.delete()
+
+# COMMAND ----------
+
+

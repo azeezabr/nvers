@@ -1,4 +1,24 @@
 # Databricks notebook source
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
+
+# COMMAND ----------
+
+#dbutils.widgets.text("businessDate", "YYYY-MM-DD")
+#businessDate = dbutils.widgets.get("businessDate")
+
+businessDate = f"{year}-{str(month).zfill(2)}-{str(day).zfill(2)}" 
+#print(businessdate)
+
+
+# COMMAND ----------
+
 import sys, os, importlib
 import importlib
 from pyspark.sql.functions import lit, current_date, monotonically_increasing_id,current_date,col, when, expr, to_date, unix_timestamp, from_unixtime, current_timestamp, date_format, to_timestamp
@@ -7,9 +27,8 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
-businessDate = '2024-08-04'
 businessDate = to_date(lit(businessDate), 'yyyy-MM-dd')
-dividendDate = '2024-06-14' # wil later use businesDate for this.
+dividendDate = businessDate # wil later use businesDate for this.
 
 # COMMAND ----------
 
@@ -40,10 +59,6 @@ import silver.util_func as util
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
@@ -55,7 +70,7 @@ sv_company_profile_df = sv_company_profile_dt.toDF().filter(col('EndDate').isNul
 
 sv_company_metrics_nm = 'company_symbol_metrics' 
 sv_company_metrics_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{sv_company_metrics_nm}")
-sv_company_metrics_df = sv_company_metrics_dt.toDF().filter(col('EndDate') == businessDate)
+sv_company_metrics_df = sv_company_metrics_dt.toDF().filter(col('EndDate') == '2024-08-18')
 
 gold_layer_path = f"{adls_path}/gold" 
 gold_table_DimCompany_nm = 'DimCompany' 
@@ -69,7 +84,19 @@ gold_table_FactDividendPayout_nm = 'FactDividendPayout'
 
 # COMMAND ----------
 
+#display(sv_company_metrics_df)
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
+
+# COMMAND ----------
+
 result_df = sv_company_metrics_df.filter(col('DividendDate') == dividendDate).select('CompanyID', 'DividendDate', 'DividendPerShare', 'DividendYield')
+
+# COMMAND ----------
+
+#result_df.show()
 
 # COMMAND ----------
 
@@ -106,14 +133,23 @@ final_df = final_df.drop("DividendDate", "DividendYield", "DimCompanyID","Divide
 
 # COMMAND ----------
 
+final_df = final_df.coalesce(4)
+
+# COMMAND ----------
+
+#display(final_df)
+
+# COMMAND ----------
+
 final_df.write.format("delta").mode("append").save(f'{gold_layer_path}/{gold_table_FactDividendPayout_nm}')
 
 
 # COMMAND ----------
 
-gold_table_FactCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_FactDividendPayout_nm}")
+#gold_table_FactCompany_dt = DeltaTable.forPath(spark, f"{gold_layer_path}/{gold_table_FactDividendPayout_nm}")
 #gold_table_FactCompany_df = gold_table_FactCompany_dt.toDF().filter(col('IsActive') == businessDate)
-display(gold_table_FactCompany_dt.toDF())
+#display(gold_table_FactCompany_dt.toDF())
+#gold_table_FactCompany_dt.delete()
 
 # COMMAND ----------
 

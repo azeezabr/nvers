@@ -7,6 +7,17 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
+
+# COMMAND ----------
+
 usr_path = dbutils.secrets.get(scope="nvers", key="usr_dir")
 
 paths_and_modules = {
@@ -34,10 +45,6 @@ schem = sv.company_profile_schema()
 
 # COMMAND ----------
 
-spark._jsc.hadoopConfiguration().set("fs.azure.account.key.degroup1.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
-
-# COMMAND ----------
-
 storage_name = dbutils.secrets.get('nvers','storage_name')
 container_name = dbutils.secrets.get('nvers','container_name')
 adls_path = f"abfss://{container_name}@{storage_name}.dfs.core.windows.net"
@@ -46,6 +53,10 @@ silver_layer_path = f"{adls_path}/silver"
 symbol_mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'stock_price_5_min'
 bronze_table_name = 'stock-data-intraday/timeseries-5m/year=2024/month=3/'
+
+# COMMAND ----------
+
+spark._jsc.hadoopConfiguration().set(f"fs.azure.account.key.{storage_name}.dfs.core.windows.net", dbutils.secrets.get('nvers','SID')) 
 
 # COMMAND ----------
 
@@ -100,9 +111,3 @@ silver_customer_profile_df = silver_table_dt.toDF()
 #silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 
 #silver_table_dt.delete()
-
-# COMMAND ----------
-
-# MAGIC %environment
-# MAGIC "client": "1"
-# MAGIC "base_environment": ""

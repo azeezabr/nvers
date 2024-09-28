@@ -7,6 +7,17 @@ from delta.tables import DeltaTable
 
 # COMMAND ----------
 
+dbutils.widgets.text("year", "")
+dbutils.widgets.text("month", "")
+dbutils.widgets.text("day", "")
+
+
+year = dbutils.widgets.get("year")
+month = dbutils.widgets.get("month")
+day = dbutils.widgets.get("day")
+
+# COMMAND ----------
+
 paths_and_modules = {
     f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/schemas/': ['silver.company_profile'],
     f'{dbutils.secrets.get(scope="nvers", key="usr_dir")}/nvers/src/common/': ['utils'],
@@ -43,19 +54,16 @@ bronze_layer_path = f"{adls_path}/bronze"
 silver_layer_path = f"{adls_path}/silver"
 mapping_table_path = f"{silver_layer_path}/mapping/symbol_mapping"
 silver_table_name = 'company_profile'
-bronze_table_name = 'overview'
+bronze_table_name = f'overview/year={year}/month={month}/day={day}'
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 
 # COMMAND ----------
 
 bronze_df = util.load_bronze_data(spark,bronze_layer_path,bronze_table_name )
-#bronze_df = bronze_df.filter(bronze_df.Symbol == 'MSFT')
-#display(bronze_df)
 
 # COMMAND ----------
 
-mapping_schema = sv.symbol_mapping_schema()
-mapping_df = util.update_symbol_mapping(spark,bronze_df, mapping_table_path,mapping_schema)
+mapping_df = util.read_delta_to_df(spark,mapping_table_path)
 
 # COMMAND ----------
 
@@ -81,6 +89,10 @@ company_profile_df = bronze_df.join(mapping_df, on="Symbol", how="inner").select
      .withColumn("EndDate", lit(None).cast(DateType())) \
      .withColumn("IsCurrent", lit("Y")) 
 
+
+# COMMAND ----------
+
+company_profile_df = company_profile_df.coalesce(4)
 
 # COMMAND ----------
 
@@ -149,11 +161,12 @@ silver_table_dt.alias("target").merge(
 # COMMAND ----------
 
 
+'''
 silver_table_dt = DeltaTable.forPath(spark, f"{silver_layer_path}/{silver_table_name}")
 silver_customer_profile_df = silver_table_dt.toDF()
-display(silver_customer_profile_df)
+display(silver_customer_profile_df.count())
 
-
+'''
 
 
 # COMMAND ----------

@@ -77,7 +77,7 @@ spark.sql(f"""
         ProcessDate TIMESTAMP,
         JobName STRING
     ) USING DELTA
-        CLUSTER BY (DimDateKey)
+        PARTITIONED BY (DimDateKey)
 	""") 
  
 
@@ -118,7 +118,7 @@ gold_table_path = f"{gold_layer_path}/{gold_table_FactStorckPriceDaily_nm}"
 
 spark.sql(f"""
     CREATE TABLE delta.`{gold_table_path}` (
-        FactStockPriceMonthlyKey BIGINT GENERATED ALWAYS AS IDENTITY,
+        FactStockPriceDailyKey BIGINT GENERATED ALWAYS AS IDENTITY,
         DimCompanyKey BIGINT,
         DimDateKey INT,
         Open DOUBLE,
@@ -131,7 +131,7 @@ spark.sql(f"""
         ProcessDate TIMESTAMP,
         JobName STRING
     ) USING DELTA
-        PARTITIONED BY (DimCompanyKey, TradeYearMonth)
+        PARTITIONED BY (DimDateKey)
 	""")
 
 

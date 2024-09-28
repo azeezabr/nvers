@@ -89,10 +89,50 @@ spark.sql(f"""
         Close DOUBLE,
         Volume BIGINT,
         TradeYearMonth INT,
-        EffectiveDate DATE
+        EffectiveDate DATE,
+        year INT,
+        month INT,
+        day INT
     )
     USING DELTA
-    PARTITIONED BY (Symbol, TradeYearMonth)
+    PARTITIONED BY (year,month, day)
     --CLUSTER BY (Symbol, TradeDate)
+""")
+
+
+delta_table_path = f"{process_store_path}/'job_control_table'"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{delta_table_path}` (
+        Continue_flag STRING,
+        last_updated TIMESTAMP
+    )
+    USING DELTA;
+""")
+
+
+
+
+
+delta_table_path = f"{process_store_path}/{silver_table_name}"
+
+
+
+spark.sql(f"""
+    CREATE TABLE delta.`{delta_table_path}` (
+        Job_id STRING,
+        Run_id STRING,
+        Processed_date DATE,
+        Start_time TIMESTAMP,
+        End_time TIMESTAMP,
+        Status STRING,
+        Cluster_id STRING,
+        Notebook_path STRING,
+        Result_message STRING,
+        Last_updated TIMESTAMP
+    )
+    USING DELTA;
 """)
   '''
